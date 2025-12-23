@@ -1,50 +1,105 @@
-// 填入剛剛在 LINE Developers 取得的資訊
-var CHANNEL_ACCESS_TOKEN = PropertiesService.getScriptProperties().getProperty('auto_comfort_boyfriend_channel_access_token')
 
-// 用來測試 webhook 是否正常運作 (瀏覽器測試用)
-function doGet() {
-  return ContentService.createTextOutput('LINE Bot webhook is running!');
-}
+var CHANNEL_ACCESS_TOKEN = PropertiesService.getScriptProperties().getProperty('auto_comfort_boyfriend_channel_access_token');
+
+var SPREADSHEET_ID = PropertiesService.getScriptProperties().getProperty('auto_comfort_boyfriend_sheet_id');
+
+var SHEET_NAME = 'sheet1'; 
+
 
 function doPost(e) {
   try {
-    // 解析 LINE 傳來的訊息
     var msg = JSON.parse(e.postData.contents);
-    
-    // 取出 Reply Token (回覆用的票據)
     var replyToken = msg.events[0].replyToken;
-    
-    // 取出使用者傳來的文字
     var userMessage = msg.events[0].message.text;
     
-    // 預設回覆訊息 (這裡可以設定你的邏輯)
-    var replyMessage = "寶貝，我還沒學會這句話的意思，但我正在聽！";
+    var commandList = getCommandsFromSheet();
 
-    // --- 特殊關鍵字範例 (你可以之後自己擴充) ---
-    if (userMessage.includes("想你")) {
-      // 只要句子裡有 "想你" (例如：我很想你、想你了) 都會觸發
-      replyMessage = "我也超想你～～ 我的寶貝";
-      
-    } else if (userMessage.includes("需要安慰")) {
-      // 隨機抽選邏輯
-      var choices = [
-        "我的寶貝~~ 摸摸喔 沒事的喔 摸摸你的頭 把你抱在我的懷裡", 
-        "誰讓你生氣了 我的寶貝 看我揍飛他", 
-      ];
-      replyMessage = choices[Math.floor(Math.random() * choices.length)];
-      
+    var replyMessage = "";
+
+    if (userMessage.toLowerCase() === "help" || userMessage === "說明" || userMessage === "指令") {
+      replyMessage = generateHelpMessage(commandList);
+    } 
+    else {
+      for (var i = 0; i < commandList.length; i++) {
+        var cmd = commandList[i];
+        
+        if (userMessage.includes(cmd.keyword)) {
+          if (Array.isArray(cmd.reply)) {
+            replyMessage = cmd.reply[Math.floor(Math.random() * cmd.reply.length)];
+          } else {
+            replyMessage = cmd.reply;
+          }
+          break; 
+        }
+      }
     }
-    // ----------------------------------------
 
-    // 發送回覆給 LINE
+    if (replyMessage === "") {
+      return ContentService.createTextOutput(JSON.stringify({status: 'success'}));
+    }
+
     sendLineMessage(replyToken, replyMessage);
-    
     return ContentService.createTextOutput(JSON.stringify({status: 'success'})).setMimeType(ContentService.MimeType.JSON);
-    
+
   } catch (err) {
-    // 錯誤處理
     return ContentService.createTextOutput(JSON.stringify({status: 'error', message: err.message})).setMimeType(ContentService.MimeType.JSON);
   }
+}
+function doGet(e) {
+  var commandList = getCommandsFromSheet();
+
+  replyMessage = generateHelpMessage(commandList);
+
+  return ContentService.createTextOutput(replyMessage)
+    .setMimeType(ContentService.MimeType.TEXT);
+}
+
+function getCommandsFromSheet() {
+
+  var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAME);
+  
+  var lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return []; 
+
+  var data = sheet.getRange(2, 1, lastRow - 1, 3).getValues();
+  
+  var commands = [];
+  
+
+  for (var i = 0; i < data.length; i++) {
+    var row = data[i];
+    var keyword = row[0];
+    var rawReply = row[1];
+    var desc = row[2];   
+    
+    if (!keyword) continue;
+
+    var replyData;
+    if (rawReply.toString().indexOf('\n') > -1) {
+      replyData = rawReply.toString().split('\n');
+    } else {
+      replyData = rawReply;
+    }
+
+    commands.push({
+      keyword: keyword,
+      reply: replyData,
+      description: desc
+    });
+  }
+  
+  return commands;
+}
+
+function generateHelpMessage(commandList) {
+  var helpText = "寶貝，我現在學會了這些新招式：\n\n";
+  
+  for (var i = 0; i < commandList.length; i++) {
+    helpText += "✨ " + commandList[i].keyword + "\n";
+  }
+  
+  helpText += "\n(我是連上雲端大腦的機器人喔！)";
+  return helpText;
 }
 
 function sendLineMessage(replyToken, text) {
