@@ -14,7 +14,6 @@ function doPost(e) {
     var userMessage = msg.events[0].message.text;
     var userId = msg.events[0].source.userId;
     
-    // 1. 動態從 Google Sheet 抓取最新的指令清單
     var commandList = getCommandsFromSheet();
 
     var replyMessage = "嗨寶貝這句我還沒學會 可以跟我講哦～ 愛你的崴";
@@ -49,13 +48,11 @@ function doPost(e) {
     return ContentService.createTextOutput(JSON.stringify({status: 'success'})).setMimeType(ContentService.MimeType.JSON);
 
   } catch (err) {
-    // 錯誤除錯用：如果試算表讀取失敗，這裡會回傳錯誤原因
     return ContentService.createTextOutput(JSON.stringify({status: 'error', message: err.message})).setMimeType(ContentService.MimeType.JSON);
   }
 }
 function doGet(e) {
   var commandList = getCommandsFromSheet();
-  // 當 LINE (或瀏覽器) 發送 GET 請求時，直接回傳純文字 200 OK
   replyMessage = generateHelpMessage(commandList);
   return ContentService.createTextOutput(replyMessage)
     .setMimeType(ContentService.MimeType.TEXT);
@@ -64,15 +61,11 @@ function doGet(e) {
 function logToSheet(userId, message) {
   try {
     var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(LOG_SHEET_NAME);
-    // 如果找不到這個工作表，就跳過不記 (避免報錯)
     if (!sheet) return;
 
-    // 寫入：[時間, UserID, 訊息內容]
-    // new Date() 會自動抓取當下時間
     sheet.appendRow([new Date(), userId, message]);
     
   } catch (e) {
-    // 寫入失敗就算了，不要讓機器人當機
     console.log("Log error: " + e.message); 
   }
 }
@@ -91,19 +84,15 @@ function getCommandsFromSheet() {
 
   for (var i = 0; i < data.length; i++) {
     var row = data[i];
-    var keyword = row[0];     // A欄
-    var rawReply = row[1];    // B欄
+    var keyword = row[0];
+    var rawReply = row[1];    
     
-    // 如果關鍵字是空的，就跳過
     if (!keyword) continue;
 
-    // 處理 B 欄的回應：檢查是否有換行符號
     var replyData;
     if (rawReply.toString().indexOf('\n') > -1) {
-      // 如果有換行，切個成陣列
       replyData = rawReply.toString().split('\n');
     } else {
-      // 沒有換行，就是單一字串
       replyData = rawReply;
     }
 
@@ -116,7 +105,6 @@ function getCommandsFromSheet() {
   return commands;
 }
 
-// 產生 Help 訊息 (現在需要傳入 commandList 參數)
 function generateHelpMessage(commandList) {
   var helpText = "寶貝，我現在學會了這些新招式：\n\n";
   
