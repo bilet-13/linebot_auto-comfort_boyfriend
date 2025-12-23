@@ -104,6 +104,20 @@ Bot reads commands from Google Sheets on every message, so updates are instant.
 - Apps Script: 20k URL fetches/day
 - Reply tokens expire in ~1 minute
 
+## Version History
+
+### Version 1.1 (Current)
+- **User message logging** - All user messages are now automatically stored in a `message_logs` sheet
+  - Tracks: timestamp, user ID, and message content
+  - Optional feature: create a `message_logs` sheet to enable (bot works without it)
+  - Useful for understanding user behavior and improving responses
+
+### Version 1.0 (Initial Release)
+- Dynamic command management via Google Sheets
+- Auto-generated help command
+- Random response selection
+- Zero-cost deployment on Google Apps Script
+
 ## Files
 
 - `auto_comfort_hook.gs` - Main webhook code
